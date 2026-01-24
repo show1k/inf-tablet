@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>fonts/ofont.ru_Uncage.ttf</file>
+        <file>image/logo.jpeg</file>
+        <file>image/ru.auroraos.InfTablet.png</file>
+    </qresource>
+</RCC>

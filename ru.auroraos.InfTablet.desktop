@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+X-Nemo-Application-Type=silica-qt5
+Icon=ru.auroraos.InfTablet
+Exec=/usr/bin/ru.auroraos.InfTablet
+Name=InfTablet
+Name[ru]=ИнфПланшет
+
+[X-Application]
+Permissions=Internet;UserDirs
+OrganizationName=ru.auroraos
+ApplicationName=InfTablet
+ExecDBus=/usr/bin/ru.auroraos.InfTablet
