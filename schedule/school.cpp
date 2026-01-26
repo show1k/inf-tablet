@@ -1,8 +1,17 @@
 #include "school.h"
 #include <QDebug>
+#include <enter_inf/enter_inf.h>
 
 School::School(QObject *parent) : QObject(parent)
-{}
+{
+    login = enter_inf::SchoolLogin;
+    password = enter_inf::SchoolPassword;
+    devkey = enter_inf::SchoolDevKey;
+    vendor = enter_inf::SchoolVendor;
+    url = enter_inf::SchoolUrl + "/api";
+
+    qDebug() << login << password << devkey << vendor << url;
+}
 QString School::get_login() { return login;}
 QString School::get_password() { return password;}
 QString School::get_devkey() { return devkey;}

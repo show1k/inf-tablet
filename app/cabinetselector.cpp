@@ -1,7 +1,6 @@
 #include "cabinetselector.h"
-#include "globalVar.h"
 
-CabinetSelector::CabinetSelector(QObject *parent) : QObject(parent)
+CabinetSelector::CabinetSelector(QStringList adminCab, QObject *parent) : QObject(parent), adminCab(adminCab)
 {
     m_selectedCabinet = "";
     m_cabinetModel = new QStringListModel(this);
@@ -11,11 +10,6 @@ CabinetSelector::CabinetSelector(QObject *parent) : QObject(parent)
 CabinetSelector::~CabinetSelector()
 {
     delete m_cabinetModel; // Очистка модели
-}
-
-QStringList CabinetSelector::get_add_cab()
-{
-    return admin_cabs;
 }
 
 void CabinetSelector::setSelectedCabinet(const QString &cabinet) {
@@ -28,9 +22,8 @@ void CabinetSelector::setSelectedCabinet(const QString &cabinet) {
 }
 
 void CabinetSelector::setCabinetModel() {
-    QStringList add_cab = get_add_cab();
     QStringList cabinets = collectInformationSchool::return_rooms();
-    for (const QString &cab : add_cab)
+    for (const QString &cab : adminCab)
         cabinets.append(cab);
     cabinets.sort();
     qDebug() << "Updating cabinet model with cabinets:" << cabinets;

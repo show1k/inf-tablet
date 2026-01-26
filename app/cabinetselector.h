@@ -11,10 +11,11 @@ class CabinetSelector : public QObject
 private:
     QString m_selectedCabinet; // Текущий выбранный кабинет
     QStringListModel *m_cabinetModel; // Модель для списка кабинетов
-    QStringList get_add_cab();
+    QStringList adminCab;
+
 
 public:
-    explicit CabinetSelector(QObject *parent = nullptr);
+    explicit CabinetSelector(QStringList adminCab, QObject *parent = nullptr);
     ~CabinetSelector();
 
     QStringListModel* cabinetModel() const;

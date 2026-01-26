@@ -1,6 +1,6 @@
 Name:       ru.auroraos.InfTablet
 Summary:    Информационный Планшет
-Version:    1.5.1
+Version:    1.5.2
 Release:    1
 License:    BSD-3-Clause
 URL:        https://auroraos.ru

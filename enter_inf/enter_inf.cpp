@@ -38,17 +38,17 @@ enter_inf::~enter_inf()
 
 void enter_inf::get_inf_eljur(const QStringList Inf)
 {
-//        QString Url = Inf[0];
-//        QString Login = Inf[1];
-//        QString Password = Inf[2];
-//        QString DevKey = Inf[3];
-//        QString Vendor = Inf[4];
+        QString Url = Inf[0];
+        QString Login = Inf[1];
+        QString Password = Inf[2];
+        QString DevKey = Inf[3];
+        QString Vendor = Inf[4];
 
-    QString Url = "https://lyceum-fa.eljur.ru";
-    QString Login = "lyceum-fa_api";
-    QString Password = "9093ce33241a0fe2fffa323f62719af8";
-    QString DevKey = "0805a97401448899a9d160f238e30ae8";
-    QString Vendor = "lyceum-fa";
+//    QString Url = "https://lyceum-fa.eljur.ru";
+//    QString Login = "lyceum-fa_api";
+//    QString Password = "9093ce33241a0fe2fffa323f62719af8";
+//    QString DevKey = "0805a97401448899a9d160f238e30ae8";
+//    QString Vendor = "lyceum-fa";
 
     if (!save)
     {
@@ -67,9 +67,9 @@ void enter_inf::get_inf_eljur(const QStringList Inf)
 
 void enter_inf::get_inf_yanDisk(const QStringList Inf)
 {
-    //QString Token = Inf[0];
+    QString Token = Inf[0];
 
-    QString Token = "y0__xCFr7HsBxjblgMg5u3DqRKwRRZuqKnmlTXw1AvkAqQo3D8EMQ";
+    //QString Token = "y0__xCFr7HsBxjblgMg5u3DqRKwRRZuqKnmlTXw1AvkAqQo3D8EMQ";
 
     if (!save)
     {
@@ -271,7 +271,7 @@ void enter_inf::check_correct_inf_YandexDisk(const QString &Token)
     connect(reply, &QNetworkReply::finished, this, [=]()
     {
         if (reply->error() == QNetworkReply::NoError) {
-            QByteArray data = reply->readAll();
+            //QByteArray data = reply->readAll();
             //qDebug() << "Ответ от сервера:" << data;
             emit infYanDisk_Correct();
         }

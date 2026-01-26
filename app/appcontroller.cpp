@@ -1,7 +1,6 @@
 #include "appcontroller.h"
 #include <QTimer>
 #include <QQmlContext>
-#include "globalVar.h"
 
 AppController::AppController(QObject *parent) : QObject(parent)
 {
@@ -141,7 +140,7 @@ void AppController::set_conLessons()
 {
     if(conLessons)
         return;
-    conLessons = new ControllerLessons(view.data(), this);
+    conLessons = new ControllerLessons(enter_inf::SchoolDefTimeLes, enter_inf::SchoolDefLes, view.data(), this);
     connect(this, &AppController::clear_information, conLessons, &ControllerLessons::deleteLater);
     connect(conLessons, &ControllerLessons::connectTimerToCheck, this, [=]()
     {
@@ -195,7 +194,7 @@ void AppController::setCabinetSelector()
 {
     if (cabinetSelector)
         return;
-    cabinetSelector = new CabinetSelector(this);
+    cabinetSelector = new CabinetSelector(enter_inf::AdminCab, this);
     view->rootContext()->setContextProperty("CabinetSelector", cabinetSelector);
     connect(this, &AppController::roomsReady, cabinetSelector, &CabinetSelector::setCabinetModel);
     connect(cabinetSelector, &CabinetSelector::selectedCabinetChanged, this, &AppController::setCabinet);
@@ -245,7 +244,7 @@ void AppController::set_admin_cab()
 
 QStringList AppController::get_admin_cab()
 {
-    return admin_cabs;
+    return enter_inf::AdminCab;
 }
 
 void AppController::choice_page_cab()

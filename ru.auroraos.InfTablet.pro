@@ -36,7 +36,6 @@ SOURCES += \
 HEADERS += \
     app/appcontroller.h \
     app/cabinetselector.h \
-    app/globalVar.h \
     enter_inf/enter_inf.h \
     internet_connection/internetconnection.h \
     lesson/controllerlessons.h \

@@ -1,12 +1,11 @@
 #include "controllerlessons.h"
-#include "app/globalVar.h"
 #include <QTimer>
 #include <QQuickItem>
 #include <QFuture>
 #include <QtConcurrent/QtConcurrent>
 #include <QMap>
 
-ControllerLessons::ControllerLessons(QQuickView * view, QObject *parent) : QObject(parent), m_view(view)
+ControllerLessons::ControllerLessons(const QString avgtime, const int avgles, QQuickView * view, QObject *parent) : QObject(parent), m_view(view), avgTime(avgtime), avgLes(avgles)
 {
     connect(this, &ControllerLessons::lessonsReady, this, &ControllerLessons::set_lessons);
     connect(this, &ControllerLessons::setLessonsFinished, this, [=]()
@@ -204,10 +203,10 @@ QJsonObject ControllerLessons::set_num_to_outLes(const QJsonObject &les, const Q
     }
     if (!noLes)
     {
-        minNum = def_les;
-        maxNum = def_les;
-        min =  QTime::fromString(def_les_time, "hh:mm");
-        max =  QTime::fromString(def_les_time, "hh:mm");
+        minNum = avgLes;
+        maxNum = avgLes;
+        min =  QTime::fromString(avgTime, "hh:mm");
+        max =  QTime::fromString(avgTime, "hh:mm");
     }
     if (startOutLes < min)
     {

@@ -6,13 +6,13 @@ class School : public QObject
 {
     Q_OBJECT
 private:
-    QString url = "https://lyceum-fa.eljur.ru/api";
-    QString login = "lyceum-fa_api";
-    QString password= "9093ce33241a0fe2fffa323f62719af8";
-    QString devkey = "0805a97401448899a9d160f238e30ae8";
-    QString vendor = "lyceum-fa";
-    QString token = "";
-    QString expires = "";
+    QString url;
+    QString login;
+    QString password;
+    QString devkey;
+    QString vendor;
+    QString token;
+    QString expires;
 public:
     explicit School(QObject *parent = nullptr);
     QString get_login();
