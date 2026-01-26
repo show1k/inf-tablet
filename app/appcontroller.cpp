@@ -6,10 +6,18 @@
 AppController::AppController(QObject *parent) : QObject(parent)
 {
     setView();
+    set_Enter_inf();
+}
+
+void AppController::prepare_app()
+{
+    qDebug() << "start prepare_app";
     startAppConnection = connect(this, &AppController::cabinetReady, this, &AppController::start_app);
     QTimer::singleShot(0, this, &AppController::setCabinetSelector);
     QTimer::singleShot(0, this, &AppController::start_download_information);
+    emit checkInternetToQml();
 }
+
 
 void AppController::start_app()
 {
@@ -173,7 +181,6 @@ void AppController::setView()
         view->setSource(Aurora::Application::pathTo(QStringLiteral("qml/InfTablet.qml")));
         view->rootContext()->setContextProperty("AppController", this);
         view->show();
-        emit checkInternetToQml();
     }
 }
 
@@ -254,6 +261,22 @@ void AppController::choice_page_cab()
         qDebug() << "cabinet of the admin: " << cabinet;
         QTimer::singleShot(0, this, &AppController::set_admin_cab);
     }
+}
+
+void AppController::set_Enter_inf()
+{
+    if (enterInf)
+        return;
+    enterInf = new enter_inf(this);
+    view->rootContext()->setContextProperty("enterInf", enterInf);
+    QQmlEngine::setObjectOwnership(enterInf, QQmlEngine::CppOwnership);
+    connect(enterInf, &enter_inf::inf_ready, this, [=]()
+    {
+        view->rootContext()->setContextProperty("enterInf", QVariant());
+        enterInf->deleteLater();
+    });
+    connect(enterInf, &enter_inf::inf_ready, this, &AppController::prepare_app);
+    enterInf->eljur();
 }
 
 void AppController::display_curtime()

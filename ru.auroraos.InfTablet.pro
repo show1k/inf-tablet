@@ -15,6 +15,7 @@ PKGCONFIG += \
 SOURCES += \
     app/appcontroller.cpp \
     app/cabinetselector.cpp \
+    enter_inf/enter_inf.cpp \
     internet_connection/internetconnection.cpp \
     lesson/controllerlessons.cpp \
     lesson/lesson.cpp \
@@ -36,6 +37,7 @@ HEADERS += \
     app/appcontroller.h \
     app/cabinetselector.h \
     app/globalVar.h \
+    enter_inf/enter_inf.h \
     internet_connection/internetconnection.h \
     lesson/controllerlessons.h \
     lesson/lesson.h \
@@ -57,6 +59,9 @@ DISTFILES += \
     qml/pages/AdminPage.qml \
     qml/pages/InputCab.qml \
     qml/pages/ScrollingText.qml \
+    qml/pages/enter_about.qml \
+    qml/pages/enter_eljur.qml \
+    qml/pages/enter_yandexDisk.qml \
     rpm/ru.auroraos.InfTablet.spec \
     qml/cover/DefaultCoverPage.qml \
     qml/pages/MainPage.qml \

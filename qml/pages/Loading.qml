@@ -106,4 +106,24 @@ Page
             pageStack.replaceAbove(null, Qt.resolvedUrl("../pages/InputCab.qml"));
         }
     }
+
+    Connections
+    {
+        target: enterInf
+
+        onOpen_window_eljur:
+        {
+             pageStack.replaceAbove(null, Qt.resolvedUrl("enter_eljur.qml"));
+        }
+
+        onOpen_window_yandex_disk:
+        {
+            pageStack.replaceAbove(null, Qt.resolvedUrl("enter_yandexDisk.qml"));
+        }
+
+        onOpen_window_about_school:
+        {
+            pageStack.replaceAbove(null, Qt.resolvedUrl("enter_about.qml"));
+        }
+    }
 }

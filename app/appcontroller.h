@@ -9,6 +9,7 @@
 #include "lesson/controllerlessons.h"
 #include "set_pictures/controllersetpictures.h"
 #include "schedule/collectinformationschool.h"
+#include "enter_inf/enter_inf.h"
 
 class AppController : public QObject
 {
@@ -24,6 +25,7 @@ private:
     QPointer<ControllerSetPictures> conPictures;
     QPointer<ControllerLessons> conLessons;
     QPointer<collectInformationSchool> colInfSch;
+    QPointer<enter_inf> enterInf;
     QJsonObject schedule;
     QString cabinet;
     QList<QString> pathsToImagesBreak;
@@ -34,6 +36,7 @@ private:
     bool pathsToImagesBreak_finished;
     QStringList get_admin_cab();
     void choice_page_cab();
+    void set_Enter_inf();
 public:
     AppController(QObject *parent = nullptr);
     void setView();
@@ -56,6 +59,7 @@ private slots:
     void set_conPictures();
     void update_information();
     void set_admin_cab();
+    void prepare_app();
 signals:
     void roomsReady();
     void informationReady();

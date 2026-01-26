@@ -37,6 +37,8 @@ UploadWeekSchedule::~UploadWeekSchedule()
     // Очищаем ресурсы
     if (lyceum) lyceum->deleteLater();
     if (manager) manager->deleteLater();
+    if (manager2) manager2->deleteLater();
+    if (manager3) manager3->deleteLater();
 }
 
 QStringList UploadWeekSchedule::get_classes()

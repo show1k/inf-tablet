@@ -25,7 +25,7 @@ void YandexDirectoryChecker::check_directories()
     }
 
     QDir dirbreak(breakDirPath);
-    if (!dirteacher.exists()) {
+    if (!dirbreak.exists()) {
         qDebug() << "break folder not exist";
         emit directoryCheckFailed();
         return;
