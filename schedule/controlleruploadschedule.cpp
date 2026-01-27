@@ -18,6 +18,11 @@ ControllerUploadSchedule::ControllerUploadSchedule(const QStringList &Data, coll
     });
 }
 
+ControllerUploadSchedule::~ControllerUploadSchedule()
+{
+    qDebug() << "ControllerUploadSchedule finish";
+}
+
 void ControllerUploadSchedule::isInternet()
 {
     QStringList classrooms = collectInformationSchool::return_rooms();
@@ -73,6 +78,7 @@ void ControllerUploadSchedule::download_schedule()
     QObject::connect(uploaderWeek, &UploadWeekSchedule::allSchedulesDownloaded, thread, &QThread::quit);
     QObject::connect(thread, &QThread::finished, this, [=]()
     {
+        qDebug() << "download_infile_schedule_end";
         thread->deleteLater();
         uploaderWeek->deleteLater();
         uploaderWeek = nullptr;

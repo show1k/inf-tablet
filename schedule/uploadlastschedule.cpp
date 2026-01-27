@@ -4,6 +4,7 @@
 #include <QNetworkReply>
 #include <QJsonDocument>
 #include <QMap>
+#include <QTimer>
 
 UploadLastSchedule::UploadLastSchedule(const QStringList &Data, QJsonObject &classrooms_schedule_m, QObject *parent) : QObject(parent), classrooms_schedule(classrooms_schedule_m)
 {
@@ -60,13 +61,11 @@ void UploadLastSchedule::start_upload_shedule()
     QStringList classesForReplaceLes = collectInformationSchool::return_classes();
     qDebug() << classesForOutLes;
     qDebug() << classesForReplaceLes;
-    pendingRequests = clas_shedule.keys().size() + classesForOutLes.size() + classesForReplaceLes.size(); // Количество запросов
 
     // Подключаем обработчик один раз
     connect(this, &UploadLastSchedule::classScheduleLoaded, this, [=](const QJsonArray &schedule, const QString &clas) {
         if (!schedule.isEmpty())
         {
-            qDebug() << clas << schedule;
             if (!clas_shedule[clas].toArray().isEmpty())
             {
                 QJsonArray v = clas_shedule[clas].toArray();
@@ -81,13 +80,9 @@ void UploadLastSchedule::start_upload_shedule()
             {
                 clas_shedule[clas] = schedule;
             }
-            qDebug() << clas_shedule[clas];
         }
-        pendingRequests--; // Уменьшаем счетчик
-
-        if (pendingRequests == 0) {
-            emit allSchedulesLoaded(clas_shedule); // Все запросы завершены
-        }
+        if (!pendingRequests.deref())
+            checkAllCompleted();
     });
 
     // Запускаем запросы для всех классов
@@ -122,8 +117,6 @@ void UploadLastSchedule::process_classroom_shedule()
         {
             QString classname = clas_shedule.keys().at(j);
             QJsonArray cur_clas_schedule = clas_shedule.value(classname).toArray();
-            if (classname == "11Д")
-                qDebug () << cur_clas_schedule;
             for (int k = 0; k < cur_clas_schedule.count(); k++)
             {
                 QJsonObject cur_lesson = cur_clas_schedule[k].toObject();
@@ -151,96 +144,124 @@ void UploadLastSchedule::process_classroom_shedule()
         emit classroomScheduleLoaded(classrooms_schedule);
 }
 
-void UploadLastSchedule::upload_class_shedule(const QString &clas)
+int UploadLastSchedule::calculateBackoffDelay(int retryCount) const
 {
-    QNetworkRequest request;
-    QUrl sheduleurl = lyceum->get_shedule_url(clas);
-    request.setUrl(sheduleurl);
+    return qMin(10000, 1000 * (1 << retryCount));
+}
 
-    QNetworkReply *reply = manager1->get(request);
+void UploadLastSchedule::checkAllCompleted()
+{
+    if (pendingRequests.loadAcquire() == 0) {
+        qDebug() << "clas_shedule ready";
+        emit allSchedulesLoaded();
+    }
+}
 
+// Парсер как метод класса (имеет доступ к RequestType)
+QJsonArray UploadLastSchedule::parseResponse(const QJsonObject &root, RequestType type) const
+{
+    QJsonObject response = root.value("response").toObject();
+    QJsonObject result = response.value("result").toObject();
+
+    if (type == ReplaceLessons) {
+        return result.value("replace").toArray();
+    }
+
+    QJsonObject days = result.value("days").toObject();
+    QJsonObject dayData = days.value(QDateTime::currentDateTime().toString("yyyyMMdd")).toObject();
+
+    if (type == RegularSchedule) {
+        return dayData.value("items").toArray();
+    } else { // OutLessons
+        return dayData.value("items_extday").toArray();
+    }
+}
+
+void UploadLastSchedule::startRequestWithRetry(const QString &clas, const QUrl &url, QNetworkAccessManager *manager, RequestType type, int retryCount)
+{
+    QNetworkReply *reply = manager->get(QNetworkRequest(url));
+    pendingRequests.ref();  // Атомарно увеличиваем ДО запуска
+
+    // Таймер таймаута (10 секунд)
+    QTimer *timeoutTimer = new QTimer(this);
+    timeoutTimer->setSingleShot(true);
+    // При таймауте — отменяем запрос (вызовет обработчик ошибок)
+    connect(timeoutTimer, &QTimer::timeout, reply, [reply]()
+    {
+        reply->abort(); // Приведёт к срабатыванию ошибки OperationCanceledError
+    });
+
+    timeoutTimer->start(10000);
+
+    // Единый обработчик завершения (успех/ошибка/таймаут)
     connect(reply, &QNetworkReply::finished, this, [=]()
     {
-        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-        QJsonObject root = doc.object();
+        // Останавливаем и удаляем таймер
+        timeoutTimer->stop();
+        timeoutTimer->deleteLater();
 
-        QJsonObject jv = root.value("response").toObject();
-        QJsonObject jv2 = jv.value("result").toObject();
-        QJsonObject jv3 = jv2.value("days").toObject();
-        QJsonObject jv4 = jv3.value(QDateTime::currentDateTime().toString("yyyyMMdd")).toObject();
-        QJsonArray jv5 = jv4.value("items").toArray();
+        QNetworkReply::NetworkError error = reply->error();
+        bool isTimeout = (error == QNetworkReply::OperationCanceledError);
 
-        emit classScheduleLoaded(jv5, clas);
-        reply->deleteLater();
-    });
+        if (error != QNetworkReply::NoError) {
+            QString errorMsg = isTimeout ? "Request timeout (10s)" : reply->errorString();
+            qWarning() << (isTimeout ? "Timeout" : "Error")
+                       << "for" << clas
+                       << "(attempt" << (retryCount + 1) << "/" << (MAX_RETRIES) << "):" << errorMsg;
 
-    connect(reply, static_cast<void (QNetworkReply::*)(QNetworkReply::NetworkError)>(&QNetworkReply::error), this, [=]()
-    {
-            qWarning() << "Error for class" << clas << ":" << reply->errorString();
-            emit classScheduleLoaded(QJsonArray(), clas);
             reply->deleteLater();
+
+            if (retryCount < MAX_RETRIES) {
+                int delay = calculateBackoffDelay(retryCount + 1);
+                qInfo() << "Retrying" << clas << "after" << delay << "ms";
+                QTimer::singleShot(delay, this, [=]() {
+                    startRequestWithRetry(clas, url, manager, type, retryCount + 1);
+                });
+                pendingRequests.deref();
+                return;
+            }
+
+            qWarning() << "Max retries reached for" << clas;
+            emit classScheduleLoaded(QJsonArray(), clas);
+            return;
+        }
+
+        // Успешный ответ
+        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+        reply->deleteLater();
+
+        if (doc.isNull() || !doc.isObject()) {
+            qWarning() << "Invalid JSON for" << clas;
+            if (retryCount < MAX_RETRIES) {
+                QTimer::singleShot(calculateBackoffDelay(retryCount + 1), this, [=]() {
+                    startRequestWithRetry(clas, url, manager, type, retryCount + 1);
+                });
+                pendingRequests.deref();
+                return;
+            }
+        }
+
+        // Финальный результат
+        QJsonArray result = doc.isNull() ? QJsonArray() : parseResponse(doc.object(), type);
+        emit classScheduleLoaded(result, clas);
     });
+}
+
+// Основные функции остаются компактными
+void UploadLastSchedule::upload_class_shedule(const QString &clas)
+{
+    QString url = lyceum->get_shedule_url(clas);
+    startRequestWithRetry(clas, QUrl(url), manager1, RegularSchedule, 0);
 }
 
 void UploadLastSchedule::upload_outLessons(const QString &clas)
 {
-    qDebug() << "start upload out les for " << clas;
-    QNetworkRequest request;
-    QUrl sheduleurl = lyceum->get_shedule_url(clas);
-    request.setUrl(sheduleurl);
-
-    QNetworkReply *reply = manager2->get(request);
-
-    connect(reply, &QNetworkReply::finished, this, [=]()
-    {
-        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-        QJsonObject root = doc.object();
-
-        QJsonObject jv = root.value("response").toObject();
-        QJsonObject jv2 = jv.value("result").toObject();
-        QJsonObject jv3 = jv2.value("days").toObject();
-        QJsonObject jv4 = jv3.value(QDateTime::currentDateTime().toString("yyyyMMdd")).toObject();
-        QJsonArray jv5 = jv4.value("items_extday").toArray();
-        qDebug() << "outLes" <<  jv5;
-        emit classScheduleLoaded(jv5, clas);
-        reply->deleteLater();
-    });
-
-    connect(reply, static_cast<void (QNetworkReply::*)(QNetworkReply::NetworkError)>(&QNetworkReply::error), this, [=]()
-    {
-            qWarning() << "Error for class" << clas << ":" << reply->errorString();
-            emit classScheduleLoaded(QJsonArray(), clas);
-            reply->deleteLater();
-    });
+    QString url = lyceum->get_shedule_url(clas);
+    startRequestWithRetry(clas, QUrl(url), manager2, OutLessons, 0);
 }
 
 void UploadLastSchedule::upload_replace_lessons(const QString &clas)
 {
-    qDebug() << "start upload replace lessons for " << clas;
-    QNetworkRequest request;
-    QUrl sheduleurl = lyceum->get_replace_url(clas);
-    //qDebug() << sheduleurl;
-    request.setUrl(sheduleurl);
-
-    QNetworkReply *reply = manager3->get(request);
-
-    connect(reply, &QNetworkReply::finished, this, [=]()
-    {
-        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-        QJsonObject root = doc.object();
-
-        QJsonObject jv = root.value("response").toObject();
-        QJsonObject jv2 = jv.value("result").toObject();
-        QJsonArray jv3 = jv2.value("replace").toArray();
-        qDebug() << "replaces" <<  jv3;
-        emit classScheduleLoaded(jv3, clas);
-        reply->deleteLater();
-    });
-
-    connect(reply, static_cast<void (QNetworkReply::*)(QNetworkReply::NetworkError)>(&QNetworkReply::error), this, [=]()
-    {
-            qWarning() << "Error for class" << clas << ":" << reply->errorString();
-            emit classScheduleLoaded(QJsonArray(), clas);
-            reply->deleteLater();
-    });
+    QString url = lyceum->get_replace_url(clas);
+    startRequestWithRetry(clas, QUrl(url), manager3, ReplaceLessons, 0);
 }

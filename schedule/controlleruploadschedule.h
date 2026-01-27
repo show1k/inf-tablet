@@ -21,6 +21,7 @@ private:
     bool downloadEnded;
 public:
     explicit ControllerUploadSchedule(const QStringList& Data, collectInformationSchool* ptrColInfSch, internetConnection* ptrIntcon, QObject *parent = nullptr);
+    ~ControllerUploadSchedule();
     void start();
 private slots:
     void isInternet();

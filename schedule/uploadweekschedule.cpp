@@ -8,6 +8,7 @@
 #include <QJsonArray>
 #include <QStandardPaths>
 #include "collectinformationschool.h"
+#include <QTimer>
 
 UploadWeekSchedule::UploadWeekSchedule(const QStringList &Data, QObject *parent) : QObject(parent)
 {
@@ -71,7 +72,6 @@ void UploadWeekSchedule::start_upload_shedule()
 {
     QStringList classesOutLes = get_classes();
     QStringList classesForReplaceLes = collectInformationSchool::return_classes();
-    pendingRequests = 7 * (classes.size() + classesOutLes.size() + classesForReplaceLes.size()); // Количество классов * 7 дней
 
     // Инициализируем QMap для хранения расписаний по дням недели
     daySchedules.clear();
@@ -80,7 +80,9 @@ void UploadWeekSchedule::start_upload_shedule()
         daySchedules[day] = QJsonObject();
 
     // Подключаем обработчик для сохранения расписания
-    connect(this, &UploadWeekSchedule::classScheduleLoaded, this, &UploadWeekSchedule::save_day_schedule);
+    connect(this, &UploadWeekSchedule::classScheduleLoaded, this, &UploadWeekSchedule::proccess_schedule);
+
+    pendingRequests.storeRelease(0);
 
     // Запускаем запросы для всех классов
     for (int i = 0; i < classes.size(); i++)
@@ -103,59 +105,30 @@ void UploadWeekSchedule::start_upload_shedule()
     }
 }
 
-void UploadWeekSchedule::upload_class_shedule(const QString &clas)
+void UploadWeekSchedule::save_schedules()
 {
-    QStringList urls = lyceum->get_schedule_urls_for_week(clas);
-
-    for (int i = 0; i < urls.size(); i++)
+    QString homePath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+    QString publicPath = homePath + "/Public/DataInfTablet";
+    QDir dir(publicPath);
+    QStringList days = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+    for (const QString& dayOfWeek : days)
     {
-        QNetworkRequest request;
-        QUrl scheduleUrl = urls.at(i);
-        request.setUrl(scheduleUrl);
-
-        QNetworkReply *reply = manager->get(request);
-
-        QString date = QDate::fromString(urls.at(i).split("days=").at(1).split("&").at(0), "yyyyMMdd").toString("yyyyMMdd");
-
-        connect(reply, &QNetworkReply::finished, this, [=]()
+        QString filename = dir.filePath(QString("schedules/schedule_%1.json").arg(dayOfWeek));
+        QFile file(filename);
+        const QJsonObject& daySchedule = daySchedules[dayOfWeek];
+        if (file.open(QIODevice::WriteOnly))
         {
-            QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-            QJsonObject root = doc.object();
-
-            QJsonObject jv = root.value("response").toObject();
-            QJsonObject jv2 = jv.value("result").toObject();
-            QJsonObject jv3 = jv2.value("days").toObject();
-            QJsonObject jv4 = jv3.value(date).toObject();
-            QJsonArray jv5 = jv4.value("items").toArray();
-
-            emit classScheduleLoaded(jv5, clas, date);
-            reply->deleteLater();
-            pendingRequests--;
-
-            if (pendingRequests == 0)
-            {
-                qDebug() << "All schedules downloaded and saved";
-                emit allSchedulesDownloaded();
-            }
-        });
-
-        connect(reply, static_cast<void (QNetworkReply::*)(QNetworkReply::NetworkError)>(&QNetworkReply::error), this, [=]()
-        {
-            qWarning() << "Error for class" << clas << "on date" << date << ":" << reply->errorString();
-            emit classScheduleLoaded(QJsonArray(), clas, date);
-            reply->deleteLater();
-            pendingRequests--;
-
-            if (pendingRequests == 0)
-            {
-                qDebug() << "All schedules downloaded and saved (with errors)";
-                emit allSchedulesDownloaded();
-            }
-        });
+            QJsonDocument doc(daySchedule);
+            file.write(doc.toJson());
+            file.close();
+            qDebug() << "Saved schedule for" << dayOfWeek << "to" << filename;
+        }
+        else
+           qWarning() << "Failed to save schedule for" << dayOfWeek << ":" << file.errorString();
     }
 }
 
-void UploadWeekSchedule::save_day_schedule(const QJsonArray &schedule, const QString &clas, const QString &date)
+void UploadWeekSchedule::proccess_schedule(const QJsonArray &schedule, const QString &clas, const QString &date)
 {
     // Получаем день недели из даты
     QLocale enLocale(QLocale::English);
@@ -188,39 +161,126 @@ void UploadWeekSchedule::save_day_schedule(const QJsonArray &schedule, const QSt
     else
     {
         qWarning() << "Invalid day of week:" << dayOfWeek;
-        return;
+    }
+    if (!pendingRequests.deref())
+        checkAllCompleted();
+}
+
+int UploadWeekSchedule::calculateBackoffDelay(int retryCount) const
+{
+    return qMin(10000, 1000 * (1 << retryCount));
+}
+
+void UploadWeekSchedule::checkAllCompleted()
+{
+    if (pendingRequests.loadAcquire() == 0) {
+        qDebug() << "All schedules downloaded successfully";
+        save_schedules();
+        emit allSchedulesDownloaded();
+    }
+}
+
+// Парсер как метод класса (имеет доступ к RequestType)
+QJsonArray UploadWeekSchedule::parseResponse(const QJsonObject &root, RequestType type, const QString &date) const
+{
+    QJsonObject response = root.value("response").toObject();
+    QJsonObject result = response.value("result").toObject();
+
+    if (type == ReplaceLessons) {
+        return result.value("replace").toArray();
     }
 
-    QJsonObject daySchedule = daySchedules[dayOfWeek];
-    bool allClassesProcessed = true;
-    for (int i = 0; i < classes.size(); i++)
-    {
-        const QString clas = classes.at(i);
-        if (!daySchedule.contains(clas))
-        {
-            allClassesProcessed = false;
-            break;
-        }
+    QJsonObject days = result.value("days").toObject();
+    QJsonObject dayData = days.value(date).toObject();
+
+    if (type == RegularSchedule) {
+        return dayData.value("items").toArray();
+    } else { // OutLessons
+        return dayData.value("items_extday").toArray();
     }
+}
 
-    // Если все классы для дня обработаны, сохраняем в файл
-    if (allClassesProcessed)
+void UploadWeekSchedule::startRequestWithRetry(const QString &clas, const QString &date, const QUrl &url, QNetworkAccessManager *manager, RequestType type, int retryCount)
+{
+    QNetworkReply *reply = manager->get(QNetworkRequest(url));
+    pendingRequests.ref();  // Атомарно увеличиваем ДО запуска
+
+    // Таймер таймаута (10 секунд)
+    QTimer *timeoutTimer = new QTimer(this);
+    timeoutTimer->setSingleShot(true);
+    // При таймауте — отменяем запрос (вызовет обработчик ошибок)
+    connect(timeoutTimer, &QTimer::timeout, reply, [reply]()
     {
-        QString homePath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
-        QString publicPath = homePath + "/Public/DataInfTablet";
-        QDir dir(publicPath);
-        QString filename = dir.filePath(QString("schedules/schedule_%1.json").arg(dayOfWeek));
-        QFile file(filename);
+        reply->abort(); // Приведёт к срабатыванию ошибки OperationCanceledError
+    });
 
-        if (file.open(QIODevice::WriteOnly))
-        {
-            QJsonDocument doc(daySchedule);
-            file.write(doc.toJson());
-            file.close();
-            qDebug() << "Saved schedule for" << dayOfWeek << "to" << filename;
+    timeoutTimer->start(10000);
+
+    // Единый обработчик завершения (успех/ошибка/таймаут)
+    connect(reply, &QNetworkReply::finished, this, [=]()
+    {
+        // Останавливаем и удаляем таймер
+        timeoutTimer->stop();
+        timeoutTimer->deleteLater();
+
+        QNetworkReply::NetworkError error = reply->error();
+        bool isTimeout = (error == QNetworkReply::OperationCanceledError);
+
+        if (error != QNetworkReply::NoError) {
+            QString errorMsg = isTimeout ? "Request timeout (10s)" : reply->errorString();
+            qWarning() << (isTimeout ? "Timeout" : "Error")
+                       << "for" << clas << "on" << date
+                       << "(attempt" << (retryCount + 1) << "/" << (MAX_RETRIES) << "):" << errorMsg;
+
+            reply->deleteLater();
+
+            if (retryCount < MAX_RETRIES) {
+                int delay = calculateBackoffDelay(retryCount + 1);
+                qInfo() << "Retrying" << clas << date << "after" << delay << "ms";
+                QTimer::singleShot(delay, this, [=]() {
+                    startRequestWithRetry(clas, date, url, manager, type, retryCount + 1);
+                });
+                pendingRequests.deref();
+                return; // Не декрементируем — задача продолжается
+            }
+
+            qWarning() << "Max retries reached for" << clas << date;
+            emit classScheduleLoaded(QJsonArray(), clas, date);
+            return;
         }
-        else
-           qWarning() << "Failed to save schedule for" << dayOfWeek << ":" << file.errorString();
+
+        // Успешный ответ
+        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+        reply->deleteLater();
+
+        if (doc.isNull() || !doc.isObject()) {
+            qWarning() << "Invalid JSON for" << clas << "on" << date;
+            if (retryCount < MAX_RETRIES) {
+                QTimer::singleShot(calculateBackoffDelay(retryCount + 1), this, [=]() {
+                    startRequestWithRetry(clas, date, url, manager, type, retryCount + 1);
+                });
+                pendingRequests.deref();
+                return; // Не декрементируем — задача продолжается
+            }
+        }
+
+        // Финальный результат
+        QJsonArray result = doc.isNull() ? QJsonArray() : parseResponse(doc.object(), type, date);
+        emit classScheduleLoaded(result, clas, date);
+    });
+}
+
+// Основные функции остаются компактными
+void UploadWeekSchedule::upload_class_shedule(const QString &clas)
+{
+    QStringList urls = lyceum->get_schedule_urls_for_week(clas);
+
+    for (const QString &urlStr : urls) {
+        QString date = QDate::fromString(
+            urlStr.split("days=").at(1).split("&").at(0), "yyyyMMdd"
+        ).toString("yyyyMMdd");
+
+        startRequestWithRetry(clas, date, QUrl(urlStr), manager, RegularSchedule, 0);
     }
 }
 
@@ -228,51 +288,12 @@ void UploadWeekSchedule::upload_outLessons(const QString &clas)
 {
     QStringList urls = lyceum->get_schedule_urls_for_week(clas);
 
-    for (int i = 0; i < urls.size(); i++)
-    {
-        QNetworkRequest request;
-        QUrl scheduleUrl = urls.at(i);
-        request.setUrl(scheduleUrl);
+    for (const QString &urlStr : urls) {
+        QString date = QDate::fromString(
+            urlStr.split("days=").at(1).split("&").at(0), "yyyyMMdd"
+        ).toString("yyyyMMdd");
 
-        QNetworkReply *reply = manager2->get(request);
-
-        QString date = QDate::fromString(urls.at(i).split("days=").at(1).split("&").at(0), "yyyyMMdd").toString("yyyyMMdd");
-
-        connect(reply, &QNetworkReply::finished, this, [=]()
-        {
-            QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-            QJsonObject root = doc.object();
-
-            QJsonObject jv = root.value("response").toObject();
-            QJsonObject jv2 = jv.value("result").toObject();
-            QJsonObject jv3 = jv2.value("days").toObject();
-            QJsonObject jv4 = jv3.value(date).toObject();
-            QJsonArray jv5 = jv4.value("items_extday").toArray();
-
-            emit classScheduleLoaded(jv5, clas, date);
-            reply->deleteLater();
-            pendingRequests--;
-
-            if (pendingRequests == 0)
-            {
-                qDebug() << "All schedules downloaded and saved";
-                emit allSchedulesDownloaded();
-            }
-        });
-
-        connect(reply, static_cast<void (QNetworkReply::*)(QNetworkReply::NetworkError)>(&QNetworkReply::error), this, [=]()
-        {
-            qWarning() << "Error for class" << clas << "on date" << date << ":" << reply->errorString();
-            emit classScheduleLoaded(QJsonArray(), clas, date);
-            reply->deleteLater();
-            pendingRequests--;
-
-            if (pendingRequests == 0)
-            {
-                qDebug() << "All schedules downloaded and saved (with errors)";
-                emit allSchedulesDownloaded();
-            }
-        });
+        startRequestWithRetry(clas, date, QUrl(urlStr), manager2, OutLessons, 0);
     }
 }
 
@@ -280,48 +301,11 @@ void UploadWeekSchedule::upload_replace_lessons(const QString &clas)
 {
     QStringList urls = lyceum->get_replaceLes_urls_for_week(clas);
 
-    for (int i = 0; i < urls.size(); i++)
-    {
-        QNetworkRequest request;
-        QUrl scheduleUrl = urls.at(i);
-        request.setUrl(scheduleUrl);
+    for (const QString &urlStr : urls) {
+        QString date = QDate::fromString(
+            urlStr.split("days=").at(1).split("&").at(0), "yyyyMMdd"
+        ).toString("yyyyMMdd");
 
-        QNetworkReply *reply = manager3->get(request);
-
-        QString date = QDate::fromString(urls.at(i).split("days=").at(1).split("&").at(0), "yyyyMMdd").toString("yyyyMMdd");
-
-        connect(reply, &QNetworkReply::finished, this, [=]()
-        {
-            QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-            QJsonObject root = doc.object();
-
-            QJsonObject jv = root.value("response").toObject();
-            QJsonObject jv2 = jv.value("result").toObject();
-            QJsonArray jv3 = jv2.value("replace").toArray();
-
-            emit classScheduleLoaded(jv3, clas, date);
-            reply->deleteLater();
-            pendingRequests--;
-
-            if (pendingRequests == 0)
-            {
-                qDebug() << "All schedules downloaded and saved";
-                emit allSchedulesDownloaded();
-            }
-        });
-
-        connect(reply, static_cast<void (QNetworkReply::*)(QNetworkReply::NetworkError)>(&QNetworkReply::error), this, [=]()
-        {
-            qWarning() << "Error for class" << clas << "on date" << date << ":" << reply->errorString();
-            emit classScheduleLoaded(QJsonArray(), clas, date);
-            reply->deleteLater();
-            pendingRequests--;
-
-            if (pendingRequests == 0)
-            {
-                qDebug() << "All schedules downloaded and saved (with errors)";
-                emit allSchedulesDownloaded();
-            }
-        });
+        startRequestWithRetry(clas, date, QUrl(urlStr), manager3, ReplaceLessons, 0);
     }
 }

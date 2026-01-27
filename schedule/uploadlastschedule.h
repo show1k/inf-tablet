@@ -14,8 +14,15 @@ private:
     QPointer<QNetworkAccessManager> manager3;
     QJsonObject clas_shedule;
     QJsonObject classrooms_schedule;
-    int pendingRequests;
     QStringList get_classes();
+    static const int MAX_RETRIES = 3;
+    QAtomicInt pendingRequests;
+    enum RequestType {RegularSchedule, OutLessons, ReplaceLessons};
+    void startRequestWithRetry(const QString &clas, const QUrl &url, QNetworkAccessManager *manager, RequestType type, int retryCount = 0);
+
+    QJsonArray parseResponse(const QJsonObject &root, RequestType type) const;
+    int calculateBackoffDelay(int retryCount) const;
+    void checkAllCompleted();
 public:
     explicit UploadLastSchedule(const QStringList& Data, QJsonObject &classrooms_schedule_m, QObject *parent = nullptr);
 public slots:
@@ -28,7 +35,7 @@ private slots:
     void upload_replace_lessons(const QString &clas);
 signals:
     void classScheduleLoaded(const QJsonArray &schedule, const QString &clas);
-    void allSchedulesLoaded(const QJsonObject &schedules);
+    void allSchedulesLoaded();
     void classroomScheduleLoaded(const QJsonObject &classrooms_shedule);
 };
 
