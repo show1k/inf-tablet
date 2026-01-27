@@ -1,13 +1,13 @@
 #include "yandexdownloadcontroller.h"
 #include <QThread>
 
-YandexDownloadController::YandexDownloadController(internetConnection* ptrIntcon, ControllerUploadSchedule* ptrConSchedule, QObject *parent)
-    : QObject(parent), intConnect(ptrIntcon), conSchedule(ptrConSchedule)
+YandexDownloadController::YandexDownloadController(const QStringList &admincab, internetConnection* ptrIntcon, ControllerUploadSchedule* ptrConSchedule, QObject *parent)
+    : QObject(parent), intConnect(ptrIntcon), adminCab(admincab), conSchedule(ptrConSchedule)
 {
     connect(intConnect, &internetConnection::internet_connected, this, [=]()
     {
-        connect(conSchedule, &ControllerUploadSchedule::schedule_ready_to_send, this, &YandexDownloadController::startDownload);
-        connect(conSchedule, &ControllerUploadSchedule::schedule_ready_to_send, this, &YandexDownloadController::start_download);
+        connect(conSchedule, &ControllerUploadSchedule::schedule_ready_to_send, this, &YandexDownloadController::startDownload, Qt::UniqueConnection);
+        connect(conSchedule, &ControllerUploadSchedule::schedule_ready_to_send, this, &YandexDownloadController::start_download, Qt::UniqueConnection);
     });
     connect(intConnect, &internetConnection::internet_disconnected, this, &YandexDownloadController::start_reserve_images);
     imageDownloadFinished = false;
@@ -21,7 +21,7 @@ void YandexDownloadController::start_download(const QJsonObject &schedule)
     }
 
     // Initialize image downloader
-    teacherDownloader = new YandexImageTeachersDownloader();
+    teacherDownloader = new YandexImageTeachersDownloader(adminCab);
     QThread *imageThread = teacherDownloader->thread();
 
     connect(teacherDownloader, &YandexImageTeachersDownloader::finished, this, [=]() {

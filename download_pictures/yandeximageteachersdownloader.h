@@ -10,10 +10,11 @@ class YandexImageTeachersDownloader : public QObject
     Q_OBJECT
 private:
     QPointer<QNetworkAccessManager> manager;
+    const QStringList adminCab;
     QString yandextoken;
     int m_remainingDownloads;
 public:
-    explicit YandexImageTeachersDownloader(QObject *parent = nullptr);
+    explicit YandexImageTeachersDownloader(const QStringList admincab, QObject *parent = nullptr);
     ~YandexImageTeachersDownloader();
 public slots:
     void download_images(QJsonObject shedule);
@@ -26,7 +27,6 @@ private slots:
 private:
     QStringList get_teachers_name(QJsonObject &shedule);
     QString getCorrectExtension(const QByteArray &imageData);
-    QStringList get_add_name() const;
 signals:
     void finished();
 };

@@ -8,7 +8,7 @@
 #include <QTimer>
 #include <QStandardPaths>
 
-collectInformationSchool::collectInformationSchool(internetConnection* ptrIntcon, QObject *parent) : QObject(parent), intConnect(ptrIntcon)
+collectInformationSchool::collectInformationSchool(const QStringList &Data, internetConnection* ptrIntcon, QObject *parent) : QObject(parent), intConnect(ptrIntcon)
 {
     QString homePath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
     QString publicPath = homePath + "/Public/DataInfTablet";
@@ -16,7 +16,7 @@ collectInformationSchool::collectInformationSchool(internetConnection* ptrIntcon
     if (!dir.exists("informationOfSchool"))
         dir.mkdir("informationOfSchool");
     manager = new QNetworkAccessManager(this);
-    lyceum = new School(this);
+    lyceum = new School(Data, this);
     inf = false;
     connect(intConnect, &internetConnection::internet_connected, this, &collectInformationSchool::request_classes);
     connect(intConnect, &internetConnection::internet_disconnected, this, &collectInformationSchool::read_information);
@@ -50,9 +50,17 @@ void collectInformationSchool::request_classes()
     QNetworkReply *reply = manager->get(request);
     connect(reply, &QNetworkReply::finished, this, [=]
     {
-        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-        QJsonObject root = doc.object();
-        get_classses(root);
+         if (reply->error() == QNetworkReply::NoError)
+         {
+             QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+             QJsonObject root = doc.object();
+             get_classses(root);
+         }
+         else
+         {
+             qDebug() << "Ошибка сети:" << reply->errorString();
+             emit errorInternet();
+         }
         reply->deleteLater();
     });
 }

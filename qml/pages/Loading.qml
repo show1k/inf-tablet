@@ -12,6 +12,11 @@ Page
         anchors.fill: parent
         color: "#445e5f"
     }
+    DisplayBlanking
+    {
+        id: displayBlanking
+        preventBlanking: true
+    }
 
     FontLoader
     {

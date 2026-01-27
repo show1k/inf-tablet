@@ -15,7 +15,7 @@ private:
 
 
 public:
-    explicit CabinetSelector(QStringList adminCab, QObject *parent = nullptr);
+    explicit CabinetSelector(QStringList& adminCab, QObject *parent = nullptr);
     ~CabinetSelector();
 
     QStringListModel* cabinetModel() const;

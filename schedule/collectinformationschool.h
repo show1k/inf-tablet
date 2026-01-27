@@ -18,7 +18,7 @@ private:
     void get_classses(const QJsonObject&);
     void get_rooms();
 public:
-    explicit collectInformationSchool(internetConnection* ptrIntcon, QObject *parent = nullptr);
+    explicit collectInformationSchool(const QStringList& Data, internetConnection* ptrIntcon, QObject *parent = nullptr);
     static QStringList return_classes();
     static QStringList return_rooms();
     void check_infReady();
@@ -32,6 +32,7 @@ private slots:
 signals:
     void infReady();
     void noData();
+    void errorInternet();
 };
 
 #endif // COLLECTINFORMATIONSCHOOL_H

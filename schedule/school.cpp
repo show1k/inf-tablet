@@ -2,13 +2,13 @@
 #include <QDebug>
 #include <enter_inf/enter_inf.h>
 
-School::School(QObject *parent) : QObject(parent)
+School::School(const QStringList Data, QObject *parent) : QObject(parent)
 {
-    login = enter_inf::SchoolLogin;
-    password = enter_inf::SchoolPassword;
-    devkey = enter_inf::SchoolDevKey;
-    vendor = enter_inf::SchoolVendor;
-    url = enter_inf::SchoolUrl + "/api";
+    url = Data[0] + "/api";
+    login = Data[1];
+    password = Data[2];
+    devkey = Data[3];
+    vendor = Data[4];
 
     qDebug() << login << password << devkey << vendor << url;
 }

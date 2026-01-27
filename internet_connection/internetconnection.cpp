@@ -10,6 +10,7 @@ internetConnection::internetConnection(QObject *parent) : QObject(parent)
 
 void internetConnection::check_internet_connection()
 {
+    qDebug() << "проверка интернета";
     QNetworkRequest request(QUrl("https://api.github.com"));
     QNetworkReply *reply = manager->get(request);
 

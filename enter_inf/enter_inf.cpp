@@ -9,16 +9,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
-QStringList enter_inf::AdminCab = {};
-QString enter_inf::SchoolUrl = "";
-QString enter_inf::SchoolLogin = "";
-QString enter_inf::SchoolPassword = "";
-QString enter_inf::SchoolDevKey = "";
-QString enter_inf::SchoolVendor = "";
-QString enter_inf::YandexToken = "";
-int enter_inf::SchoolDefLes = 0;
-QString enter_inf::SchoolDefTimeLes = "";
-
 enter_inf::enter_inf(QObject *parent) : QObject(parent)
 {
     QString homePath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
@@ -28,21 +18,22 @@ enter_inf::enter_inf(QObject *parent) : QObject(parent)
         dir.mkdir("Log_inf");
     QString PathInf = publicPath + "/Log_inf/";
     HomePath = PathInf;
+    connect(this, &enter_inf::inf_ready, this, &enter_inf::send_data);
 }
 
 enter_inf::~enter_inf()
 {
     qDebug() << "finish enterInf";
-    emit close_enter();
+}
+
+void enter_inf::send_data()
+{
+    emit sendData(DataEljur, AdminCab, About, YandexToken);
 }
 
 void enter_inf::get_inf_eljur(const QStringList Inf)
 {
-        QString Url = Inf[0];
-        QString Login = Inf[1];
-        QString Password = Inf[2];
-        QString DevKey = Inf[3];
-        QString Vendor = Inf[4];
+     DataEljur = Inf; // 0 = url; 1 = login; 2 = password; 3 = devkey; 4 = vendor
 
 //    QString Url = "https://lyceum-fa.eljur.ru";
 //    QString Login = "lyceum-fa_api";
@@ -60,7 +51,7 @@ void enter_inf::get_inf_eljur(const QStringList Inf)
         });
     }
 
-    QString fullUrl = Url + "/api/getrules?&vendor=" + Vendor + "&devkey=" + DevKey + "&login=" + Login + "&password=" + Password;
+    QString fullUrl = DataEljur[0] + "/api/getrules?&vendor=" + DataEljur[4] + "&devkey=" + DataEljur[3] + "&login=" + DataEljur[1] + "&password=" + DataEljur[2];
     qDebug() << Inf << fullUrl;
     check_correct_inf_eljur(fullUrl);
 }
@@ -90,11 +81,12 @@ void enter_inf::get_inf_aboutSch(const QStringList Inf)
     QStringList adminCabs = Inf[0].split(" ");
     QString avgNumLes =  Inf[1];
     QString avgStartLes = Inf[2];
+    QStringList s = {avgNumLes, avgStartLes};
 
+    About = s;
     AdminCab = adminCabs;
-    SchoolDefLes = avgNumLes.toInt();
-    SchoolDefTimeLes = avgStartLes;
-    qDebug() << AdminCab << SchoolDefLes << SchoolDefTimeLes;
+
+    qDebug() << AdminCab << avgNumLes << avgStartLes;
     save_inf("About_School", Inf);
     emit infAbout_ready();
     emit inf_ready();
@@ -111,12 +103,8 @@ void enter_inf::eljur()
     else
     {
         QStringList inf = read_file(PathEljur + "eljur");
-        SchoolUrl = inf[0];
-        SchoolLogin = inf[1];
-        SchoolPassword = inf[2];
-        SchoolDevKey = inf[3];
-        SchoolVendor = inf[4];
-        qDebug() << SchoolUrl << SchoolLogin << SchoolPassword << SchoolDevKey << SchoolVendor;
+        DataEljur = inf;
+        qDebug() << DataEljur;
         yandex_disk();
     }
 }
@@ -151,10 +139,13 @@ void enter_inf::about_school()
         QStringList adminCabs = inf[0].split(" ");
         QString avgNumLes =  inf[1];
         QString avgStartLes = inf[2];
+        QStringList s = {avgNumLes, avgStartLes};
+
         AdminCab = adminCabs;
-        SchoolDefLes = avgNumLes.toInt();
-        SchoolDefTimeLes = avgStartLes;
-        qDebug() << AdminCab << SchoolDefLes << SchoolDefTimeLes;
+        About = s;
+
+        qDebug() << AdminCab << avgNumLes << avgStartLes;
+
         emit inf_ready();
 
     }

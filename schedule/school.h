@@ -14,7 +14,7 @@ private:
     QString token;
     QString expires;
 public:
-    explicit School(QObject *parent = nullptr);
+    explicit School(const QStringList Data, QObject *parent = nullptr);
     QString get_login();
     QString get_password();
     QString get_devkey();

@@ -16,10 +16,11 @@ private:
     QPointer<internetConnection> intConnect;
     QPointer<collectInformationSchool> colInfSch;
     QJsonObject classrooms_schedule;
+    const QStringList DataSchool;
     bool downloadInfileEnded;
     bool downloadEnded;
 public:
-    explicit ControllerUploadSchedule(collectInformationSchool* ptrColInfSch, internetConnection* ptrIntcon, QObject *parent = nullptr);
+    explicit ControllerUploadSchedule(const QStringList& Data, collectInformationSchool* ptrColInfSch, internetConnection* ptrIntcon, QObject *parent = nullptr);
     void start();
 private slots:
     void isInternet();

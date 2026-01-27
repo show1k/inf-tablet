@@ -1,5 +1,4 @@
 #include "yandeximageteachersdownloader.h"
-#include "app/globalVar.h"
 #include <QThread>
 #include <QDir>
 #include <QUrl>
@@ -10,7 +9,7 @@
 #include <QJsonArray>
 #include <QStandardPaths>
 
-YandexImageTeachersDownloader::YandexImageTeachersDownloader(QObject *parent) : QObject(parent)
+YandexImageTeachersDownloader::YandexImageTeachersDownloader(const QStringList admincab, QObject *parent) : QObject(parent), adminCab(admincab)
 {
     yandextoken = "y0__xCFr7HsBxjblgMg5u3DqRKwRRZuqKnmlTXw1AvkAqQo3D8EMQ";
     m_remainingDownloads = 0;
@@ -42,7 +41,7 @@ void YandexImageTeachersDownloader::download_images(QJsonObject shedule)
 
     m_remainingDownloads = 0;
     QStringList teachers_names_list = get_teachers_name(shedule);
-    QStringList add_name = get_add_name();
+    QStringList add_name = adminCab;
     for (const QString& name : add_name)
         teachers_names_list.append(name);
 
@@ -244,9 +243,4 @@ QString YandexImageTeachersDownloader::getCorrectExtension(const QByteArray &ima
         return ".bmp";
     }
     return ".jpg"; // Default
-}
-
-QStringList YandexImageTeachersDownloader::get_add_name() const
-{
-    return admin_cabs;
 }

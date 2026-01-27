@@ -11,8 +11,7 @@ private:
     QPointer<QQuickView> m_view;
     int numLessons;
     int currentLesson;
-    const QString avgTime;
-    const int avgLes;
+    const QStringList AboutSch;
     bool isAnySelectedLes;
     lesson* lessons[MAXLESSONS];
     QStringList nameTeacher;
@@ -25,7 +24,7 @@ private:
     QJsonObject set_num_to_outLes(const QJsonObject& les, const QJsonArray& lesInCab);
     QJsonArray check_replace_lessons(const QJsonArray& lessons);
 public:
-    explicit ControllerLessons(const QString avgtime, const int avgLes, QQuickView* view, QObject *parent = nullptr);
+    explicit ControllerLessons(const QStringList& About, QQuickView* view, QObject *parent = nullptr);
     ~ControllerLessons();
 public slots:
     void get_lessons(const QJsonObject&, const QString&);

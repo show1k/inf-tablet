@@ -9,9 +9,9 @@
 #include <QStandardPaths>
 #include "collectinformationschool.h"
 
-UploadWeekSchedule::UploadWeekSchedule(QObject *parent) : QObject(parent)
+UploadWeekSchedule::UploadWeekSchedule(const QStringList &Data, QObject *parent) : QObject(parent)
 {
-    lyceum = new School(this);
+    lyceum = new School(Data, this);
     manager = new QNetworkAccessManager(this);
     manager2 = new QNetworkAccessManager(this);
     manager3 = new QNetworkAccessManager(this);

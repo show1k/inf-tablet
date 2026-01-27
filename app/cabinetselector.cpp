@@ -1,6 +1,6 @@
 #include "cabinetselector.h"
 
-CabinetSelector::CabinetSelector(QStringList adminCab, QObject *parent) : QObject(parent), adminCab(adminCab)
+CabinetSelector::CabinetSelector(QStringList &adminCab, QObject *parent) : QObject(parent), adminCab(adminCab)
 {
     m_selectedCabinet = "";
     m_cabinetModel = new QStringListModel(this);

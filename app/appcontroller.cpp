@@ -1,10 +1,12 @@
 #include "appcontroller.h"
 #include <QTimer>
 #include <QQmlContext>
+#include <QQmlEngine>
 
 AppController::AppController(QObject *parent) : QObject(parent)
 {
     setView();
+    connect(this, &AppController::enterDataReady, this, &AppController::prepare_app);
     set_Enter_inf();
 }
 
@@ -15,6 +17,16 @@ void AppController::prepare_app()
     QTimer::singleShot(0, this, &AppController::setCabinetSelector);
     QTimer::singleShot(0, this, &AppController::start_download_information);
     emit checkInternetToQml();
+}
+
+void AppController::get_enter_data(const QStringList Eljur, const QStringList Cabs, const QStringList About, const QString Token)
+{
+    qDebug() << Eljur << Cabs << About << Token;
+    DataEljur = Eljur;
+    AdminCab = Cabs;
+    AboutSch = About;
+    YandexToken = Token;
+    emit enterDataReady();
 }
 
 
@@ -64,6 +76,12 @@ void AppController::start_download_information()
         return;
     }
 
+    if (colInfSch)
+    {
+        qDebug() << "colInfSch еще не завершил работу";
+        return;
+    }
+
     schedule_finished = false;
     pathsToImagesBreak_finished = false;
 
@@ -72,21 +90,21 @@ void AppController::start_download_information()
     connect(internetCon, &internetConnection::internet_disconnected, this, &AppController::startDownloadReserveScheduleAndCheckReservePicturesToQml);
     connect(internetCon, &internetConnection::finish_check, internetCon, &internetConnection::deleteLater);
 
-    if (!colInfSch)
-    {
-        colInfSch = new collectInformationSchool(internetCon, this);
-        connect(colInfSch, &collectInformationSchool::noData, this, &AppController::not_internet_and_reserve_infOfSchool);
-        connect(colInfSch, &collectInformationSchool::infReady, this, &AppController::roomsReady);
-        connect(colInfSch, &collectInformationSchool::noData, colInfSch, &collectInformationSchool::deleteLater);
-    }
 
-    conSchedule = new ControllerUploadSchedule(colInfSch, internetCon, this);
+    colInfSch = new collectInformationSchool(DataEljur, internetCon, this);
+    connect(colInfSch, &collectInformationSchool::noData, this, &AppController::not_internet_and_reserve_infOfSchool);
+    connect(colInfSch, &collectInformationSchool::infReady, this, &AppController::roomsReady);
+    connect(colInfSch, &collectInformationSchool::errorInternet, internetCon, &internetConnection::check_internet_connection);
+    connect(colInfSch, &collectInformationSchool::noData, colInfSch, &collectInformationSchool::deleteLater);
+
+
+    conSchedule = new ControllerUploadSchedule(DataEljur, colInfSch, internetCon, this);
     connect(conSchedule, &ControllerUploadSchedule::notHaveSchedule, this, &AppController::not_internet_and_reserve_schedule);
     connect(conSchedule, &ControllerUploadSchedule::schedule_ready_to_send, this, &AppController::set_schedule);
     connect(conSchedule, &ControllerUploadSchedule::get_schedule_finish, conSchedule, &ControllerUploadSchedule::deleteLater);
     connect(colInfSch, &collectInformationSchool::noData, conSchedule, &ControllerUploadSchedule::deleteLater);
 
-    yandexDownloaderCon = new YandexDownloadController(internetCon, conSchedule, this);
+    yandexDownloaderCon = new YandexDownloadController(AdminCab, internetCon, conSchedule, this);
     connect(yandexDownloaderCon, &YandexDownloadController::startDownload, this, &AppController::startDownloadPicturesToQml);
     connect(yandexDownloaderCon, &YandexDownloadController::pathsReady, this, &AppController::set_pathsToImages);
     connect(yandexDownloaderCon, &YandexDownloadController::download_finished, this, &AppController::pathsToImagesBreak_finish);
@@ -140,7 +158,7 @@ void AppController::set_conLessons()
 {
     if(conLessons)
         return;
-    conLessons = new ControllerLessons(enter_inf::SchoolDefTimeLes, enter_inf::SchoolDefLes, view.data(), this);
+    conLessons = new ControllerLessons(AboutSch, view.data(), this);
     connect(this, &AppController::clear_information, conLessons, &ControllerLessons::deleteLater);
     connect(conLessons, &ControllerLessons::connectTimerToCheck, this, [=]()
     {
@@ -194,7 +212,7 @@ void AppController::setCabinetSelector()
 {
     if (cabinetSelector)
         return;
-    cabinetSelector = new CabinetSelector(enter_inf::AdminCab, this);
+    cabinetSelector = new CabinetSelector(AdminCab, this);
     view->rootContext()->setContextProperty("CabinetSelector", cabinetSelector);
     connect(this, &AppController::roomsReady, cabinetSelector, &CabinetSelector::setCabinetModel);
     connect(cabinetSelector, &CabinetSelector::selectedCabinetChanged, this, &AppController::setCabinet);
@@ -242,14 +260,9 @@ void AppController::set_admin_cab()
     });
 }
 
-QStringList AppController::get_admin_cab()
-{
-    return enter_inf::AdminCab;
-}
-
 void AppController::choice_page_cab()
 {
-    QStringList admin_cab = get_admin_cab();
+    QStringList admin_cab = AdminCab;
     if (!admin_cab.contains(cabinet))
     {
         QTimer::singleShot(0, this, &AppController::set_conLessons);
@@ -268,13 +281,12 @@ void AppController::set_Enter_inf()
         return;
     enterInf = new enter_inf(this);
     view->rootContext()->setContextProperty("enterInf", enterInf);
-    QQmlEngine::setObjectOwnership(enterInf, QQmlEngine::CppOwnership);
-    connect(enterInf, &enter_inf::inf_ready, this, [=]()
+    connect(enterInf, &enter_inf::sendData, this, &AppController::get_enter_data);
+    connect(this, &AppController::enterDataReady, this, [=]()
     {
         view->rootContext()->setContextProperty("enterInf", QVariant());
         enterInf->deleteLater();
     });
-    connect(enterInf, &enter_inf::inf_ready, this, &AppController::prepare_app);
     enterInf->eljur();
 }
 

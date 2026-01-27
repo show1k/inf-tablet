@@ -11,6 +11,7 @@ private:
     QPointer<QNetworkAccessManager> manager;
 public:
     explicit internetConnection(QObject *parent = nullptr);
+public slots:
     void check_internet_connection();
 signals:
     void internet_connected();

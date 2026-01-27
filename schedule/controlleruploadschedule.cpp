@@ -3,16 +3,17 @@
 #include <QJsonArray>
 #include <QThread>
 
-ControllerUploadSchedule::ControllerUploadSchedule(collectInformationSchool *ptrColInfSch, internetConnection* ptrIntcon, QObject *parent) : QObject(parent), intConnect(ptrIntcon), colInfSch(ptrColInfSch)
+ControllerUploadSchedule::ControllerUploadSchedule(const QStringList &Data, collectInformationSchool *ptrColInfSch, internetConnection* ptrIntcon, QObject *parent) : QObject(parent),
+    intConnect(ptrIntcon), colInfSch(ptrColInfSch), DataSchool(Data)
 {
     connect(intConnect, &internetConnection::internet_connected, this, [=]
     {
-        connect(colInfSch, &collectInformationSchool::infReady, this, &ControllerUploadSchedule::isInternet);
+        connect(colInfSch, &collectInformationSchool::infReady, this, &ControllerUploadSchedule::isInternet, Qt::UniqueConnection);
         colInfSch->check_infReady();
     });
     connect(intConnect, &internetConnection::internet_disconnected, this, [=]
     {
-        connect(colInfSch, &collectInformationSchool::infReady, this, &ControllerUploadSchedule::isNotInternet);
+        connect(colInfSch, &collectInformationSchool::infReady, this, &ControllerUploadSchedule::isNotInternet, Qt::UniqueConnection);
         colInfSch->check_infReady();
     });
 }
@@ -50,7 +51,7 @@ void ControllerUploadSchedule::get_schedule()
 {
     if (uploader)
         return;
-    uploader = new UploadLastSchedule(classrooms_schedule, this);
+    uploader = new UploadLastSchedule(DataSchool, classrooms_schedule, this);
     connect(uploader, &UploadLastSchedule::classroomScheduleLoaded, this, [=](const QJsonObject &classrooms_shedule)
     {
         emit schedule_ready_to_send(classrooms_shedule);
@@ -67,7 +68,7 @@ void ControllerUploadSchedule::download_schedule()
     if (uploaderWeek)
         return;
 
-    uploaderWeek = new UploadWeekSchedule();
+    uploaderWeek = new UploadWeekSchedule(DataSchool);
     QThread *thread = uploaderWeek->thread();
     QObject::connect(uploaderWeek, &UploadWeekSchedule::allSchedulesDownloaded, thread, &QThread::quit);
     QObject::connect(thread, &QThread::finished, this, [=]()

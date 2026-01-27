@@ -16,7 +16,7 @@ private:
     QStringList classes;
     QStringList get_classes();
 public:
-    explicit UploadWeekSchedule(QObject *parent = nullptr);
+    explicit UploadWeekSchedule(const QStringList& Data, QObject *parent = nullptr);
     ~UploadWeekSchedule();
 public slots:
     void start_upload_shedule();

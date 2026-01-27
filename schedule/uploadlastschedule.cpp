@@ -5,9 +5,9 @@
 #include <QJsonDocument>
 #include <QMap>
 
-UploadLastSchedule::UploadLastSchedule(QJsonObject &classrooms_schedule_m, QObject *parent) : QObject(parent), classrooms_schedule(classrooms_schedule_m)
+UploadLastSchedule::UploadLastSchedule(const QStringList &Data, QJsonObject &classrooms_schedule_m, QObject *parent) : QObject(parent), classrooms_schedule(classrooms_schedule_m)
 {
-    lyceum = new School(this);
+    lyceum = new School(Data, this);
     manager1 = new QNetworkAccessManager(this);
     manager2 = new QNetworkAccessManager(this);
     manager3 = new QNetworkAccessManager(this);

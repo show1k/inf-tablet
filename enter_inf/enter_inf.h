@@ -14,18 +14,14 @@ private:
     void check_correct_inf_eljur(const QString &Url);
     void check_correct_inf_YandexDisk(const QString &Token);
     void save_inf(const QString&, const QStringList&);
+    void send_data();
     QMetaObject::Connection save;
     QString HomePath;
 public:
-    static QStringList AdminCab;
-    static QString SchoolUrl;
-    static QString SchoolLogin;
-    static QString SchoolPassword;
-    static QString SchoolDevKey;
-    static QString SchoolVendor;
-    static QString YandexToken;
-    static int SchoolDefLes;
-    static QString SchoolDefTimeLes;
+    QStringList AdminCab;
+    QStringList DataEljur;
+    QString YandexToken;
+    QStringList About;
     void eljur();
     explicit enter_inf(QObject *parent = nullptr);
     ~enter_inf();
@@ -43,7 +39,7 @@ signals:
     void infYanDisk_InCorrect();
     void infAbout_ready();
     void inf_ready();
-    void close_enter();
+    void sendData(const QStringList, const QStringList, const QStringList, const QString);
 };
 
 #endif // ENTER_INF_H

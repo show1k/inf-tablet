@@ -14,11 +14,12 @@ private:
     QPointer<YandexImageBreakDownloader> breakDownloader;
     QPointer<YandexDirectoryChecker> yandexDirChecker;
     QPointer<internetConnection> intConnect;
+    const QStringList adminCab;
     QPointer<ControllerUploadSchedule> conSchedule;
     bool imageDownloadFinished;
     bool breakDownloadFinished;
 public:
-    explicit YandexDownloadController(internetConnection* ptrIntcon, ControllerUploadSchedule* ptrConSchedule, QObject *parent = nullptr);
+    explicit YandexDownloadController(const QStringList& admincab, internetConnection* ptrIntcon, ControllerUploadSchedule* ptrConSchedule, QObject *parent = nullptr);
 public slots:
     void start_download(const QJsonObject &schedule);
     void start_reserve_images();

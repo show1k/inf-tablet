@@ -5,7 +5,7 @@
 #include <QtConcurrent/QtConcurrent>
 #include <QMap>
 
-ControllerLessons::ControllerLessons(const QString avgtime, const int avgles, QQuickView * view, QObject *parent) : QObject(parent), m_view(view), avgTime(avgtime), avgLes(avgles)
+ControllerLessons::ControllerLessons(const QStringList &About, QQuickView * view, QObject *parent) : QObject(parent), m_view(view), AboutSch(About)
 {
     connect(this, &ControllerLessons::lessonsReady, this, &ControllerLessons::set_lessons);
     connect(this, &ControllerLessons::setLessonsFinished, this, [=]()
@@ -203,6 +203,8 @@ QJsonObject ControllerLessons::set_num_to_outLes(const QJsonObject &les, const Q
     }
     if (!noLes)
     {
+        int avgLes = AboutSch[0].toInt();
+        QString avgTime = AboutSch[1];
         minNum = avgLes;
         maxNum = avgLes;
         min =  QTime::fromString(avgTime, "hh:mm");

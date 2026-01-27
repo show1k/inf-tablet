@@ -17,7 +17,7 @@ private:
     int pendingRequests;
     QStringList get_classes();
 public:
-    explicit UploadLastSchedule(QJsonObject &classrooms_schedule_m, QObject *parent = nullptr);
+    explicit UploadLastSchedule(const QStringList& Data, QJsonObject &classrooms_schedule_m, QObject *parent = nullptr);
 public slots:
     void get_classroom_shedule();
     void upload_class_shedule(const QString &clas);

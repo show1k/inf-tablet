@@ -27,6 +27,10 @@ private:
     QPointer<collectInformationSchool> colInfSch;
     QPointer<enter_inf> enterInf;
     QJsonObject schedule;
+    QStringList DataEljur;
+    QString YandexToken;
+    QStringList AdminCab;
+    QStringList AboutSch;
     QString cabinet;
     QList<QString> pathsToImagesBreak;
     QMetaObject::Connection startAppConnection;
@@ -34,7 +38,6 @@ private:
     QMetaObject::Connection updateInf;
     bool schedule_finished;
     bool pathsToImagesBreak_finished;
-    QStringList get_admin_cab();
     void choice_page_cab();
     void set_Enter_inf();
 public:
@@ -60,6 +63,7 @@ private slots:
     void update_information();
     void set_admin_cab();
     void prepare_app();
+    void get_enter_data(const QStringList Eljur, const QStringList Cabs, const QStringList About, const QString Token);
 signals:
     void roomsReady();
     void informationReady();
@@ -74,6 +78,7 @@ signals:
     void triggerFadeAnimation();
     void stopFadeAnimation();
     void clear_information();
+    void enterDataReady();
 };
 
 #endif // APPCONTROLLER_H
